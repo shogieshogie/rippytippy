@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="About — ritnoppakun">
+  <article class="about">
+    <h1 class="page-title">About</h1>
+    <p>
+      Hi, I'm Sri. This site is a slow-burning collection of photos and
+      side projects. It's hosted on GitHub Pages, built with Astro, and
+      served from <code>ritnoppakun.com</code>.
+    </p>
+    <p>
+      Want to get in touch? <a href="mailto:hi@ritnoppakun.com">Email me</a>.
+    </p>
+  </article>
+</BaseLayout>
+
+<style>
+  .about {
+    max-width: 60ch;
+    padding: 0 1.5rem;
+    line-height: 1.7;
+    color: var(--fg);
+  }
+  .about p {
+    margin: 1rem 0;
+  }
+  code {
+    background: #1c1c1f;
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+</style>

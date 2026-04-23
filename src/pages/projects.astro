@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PhotoGrid from '../components/PhotoGrid';
+import { getPhotos } from '../lib/photos';
+
+const photos = getPhotos('projects', 18);
+---
+
+<BaseLayout title="Projects — ritnoppakun">
+  <h1 class="page-title">Projects</h1>
+  <p class="page-subtitle">
+    A few things I've built. Click through for the story behind each one.
+  </p>
+  <PhotoGrid client:load photos={photos} />
+</BaseLayout>

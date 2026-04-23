@@ -1,0 +1,70 @@
+---
+const { pathname } = Astro.url;
+
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/travel/', label: 'Travel' },
+  { href: '/projects/', label: 'Projects' },
+  { href: '/about/', label: 'About' },
+];
+
+const isActive = (href: string) =>
+  href === '/' ? pathname === '/' : pathname.startsWith(href);
+---
+
+<header class="topnav">
+  <a href="/" class="brand">ritnoppakun</a>
+  <nav>
+    {
+      links.map((link) => (
+        <a
+          href={link.href}
+          class:list={['nav-link', { active: isActive(link.href) }]}
+        >
+          {link.label}
+        </a>
+      ))
+    }
+  </nav>
+</header>
+
+<style>
+  .topnav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    background: rgba(15, 15, 16, 0.8);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+
+  .brand {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    font-size: 1.05rem;
+  }
+
+  nav {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .nav-link {
+    font-size: 0.95rem;
+    color: var(--muted);
+    transition: color 150ms ease;
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--fg);
+  }
+</style>

@@ -1,0 +1,65 @@
+---
+const links = [
+  { href: '/travel/', label: 'Travel' },
+  { href: '/projects/', label: 'Projects' },
+  { href: '/about/', label: 'About' },
+];
+
+const year = new Date().getFullYear();
+---
+
+<footer class="bottomnav">
+  <div class="row">
+    <span class="meta">You've reached the end</span>
+    <nav>
+      {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+  </div>
+  <div class="row sub">
+    <span>&copy; {year} ritnoppakun</span>
+    <a href="mailto:hi@ritnoppakun.com">hi@ritnoppakun.com</a>
+  </div>
+</footer>
+
+<style>
+  .bottomnav {
+    border-top: 1px solid var(--border);
+    padding: 2rem 1.5rem;
+    margin-top: 4rem;
+    background: var(--bg);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .row.sub {
+    margin-top: 1.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .meta {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  nav {
+    display: flex;
+    gap: 1.25rem;
+  }
+
+  nav a {
+    color: var(--fg);
+    font-weight: 500;
+    transition: opacity 150ms ease;
+  }
+
+  nav a:hover {
+    opacity: 0.7;
+  }
+</style>
