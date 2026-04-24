@@ -9,6 +9,9 @@ interface Props {
 type View = 'overview' | 'exiting' | 'detail';
 
 const EXIT_MS = 450;
+const COLS_ESTIMATE = 4;
+const CELL_W = 220;
+const CELL_H = 200;
 
 export default function ProjectsBrowser({ projects }: Props) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
@@ -110,51 +113,51 @@ export default function ProjectsBrowser({ projects }: Props) {
 
       {view === 'detail' && active && (
         <div className="project-detail">
-          <button type="button" className="back" onClick={close}>
-            ← Overview
-          </button>
-
-          <div className="detail-cover">
-            <div
-              className="detail-cover-img"
-              style={{ aspectRatio: `${active.cover.width} / ${active.cover.height}` }}
-            >
-              <img src={active.cover.src} alt={active.cover.alt} />
+          <div className="project-photos">
+            <button type="button" className="back" onClick={close}>
+              ← Overview
+            </button>
+            <div className="reveal-grid">
+              {active.photos.map((photo, i) => {
+                const isCover = i === 0;
+                const col = i % COLS_ESTIMATE;
+                const row = Math.floor(i / COLS_ESTIMATE);
+                const fromX = -col * CELL_W;
+                const fromY = -row * CELL_H;
+                return (
+                  <button
+                    type="button"
+                    key={photo.src}
+                    className={`reveal-card${isCover ? ' is-cover' : ''}`}
+                    style={
+                      {
+                        aspectRatio: `${photo.width} / ${photo.height}`,
+                        animationDelay: `${isCover ? 0 : i * 50}ms`,
+                        ['--from-x' as string]: `${fromX}px`,
+                        ['--from-y' as string]: `${fromY}px`,
+                      } as React.CSSProperties
+                    }
+                    onClick={() => setOpenPhotoIndex(i)}
+                    aria-label={`Open ${photo.alt}`}
+                  >
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      loading={i < 6 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="detail-grid">
-            {active.photos.map((photo, i) => {
-              const seed = (i * 9301 + 49297) % 233280;
-              const rand = seed / 233280;
-              const fromX = (rand - 0.5) * 60;
-              const fromRot = (rand - 0.5) * 8;
-              return (
-                <button
-                  type="button"
-                  key={photo.src}
-                  className="reveal-card"
-                  style={
-                    {
-                      aspectRatio: `${photo.width} / ${photo.height}`,
-                      animationDelay: `${i * 60}ms`,
-                      ['--from-x' as string]: `${fromX}px`,
-                      ['--from-rot' as string]: `${fromRot}deg`,
-                    } as React.CSSProperties
-                  }
-                  onClick={() => setOpenPhotoIndex(i)}
-                  aria-label={`Open ${photo.alt}`}
-                >
-                  <img
-                    src={photo.src}
-                    alt={photo.alt}
-                    loading={i < 6 ? 'eager' : 'lazy'}
-                    decoding="async"
-                  />
-                </button>
-              );
-            })}
-          </div>
+          <aside className="project-info">
+            <h2>{active.title}</h2>
+            <p className="date">{active.date}</p>
+            <p>{active.description}</p>
+            <p className="meta">{active.photos.length} photos</p>
+          </aside>
         </div>
       )}
 
@@ -287,8 +290,12 @@ export default function ProjectsBrowser({ projects }: Props) {
         }
 
         .project-detail {
-          display: block;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 320px;
+          gap: 2rem;
+          align-items: start;
         }
+        .project-photos { min-width: 0; }
         .back {
           background: transparent;
           border: 0;
@@ -297,37 +304,15 @@ export default function ProjectsBrowser({ projects }: Props) {
           padding: 0;
           font: inherit;
           transition: color 150ms ease;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.85rem;
+          display: inline-block;
         }
         .back:hover { color: var(--fg, #fff); }
 
-        .detail-cover {
-          margin-bottom: 0.5rem;
-          position: relative;
-          z-index: 2;
-        }
-        .detail-cover-img {
-          max-width: 720px;
-          margin: 0 auto;
-          overflow: hidden;
-          border-radius: 10px;
-          background: #1a1a1d;
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
-        .detail-cover-img img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-
-        .detail-grid {
+        .reveal-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(${CELL_W}px, 1fr));
           gap: 0.6rem;
-          margin-top: -1rem;
-          position: relative;
-          z-index: 1;
         }
         .reveal-card {
           background: #1a1a1d;
@@ -338,10 +323,15 @@ export default function ProjectsBrowser({ projects }: Props) {
           cursor: zoom-in;
           width: 100%;
           opacity: 0;
-          transform-origin: center top;
-          animation: reveal-from-under 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          transform-origin: 0% 0%;
+          animation: emerge-from-cover 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
           transition: transform 200ms ease;
           box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+        .reveal-card.is-cover {
+          animation: cover-settle 320ms ease forwards;
+          z-index: 2;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
         }
         .reveal-card:hover { transform: translateY(-2px); }
         .reveal-card img {
@@ -350,15 +340,58 @@ export default function ProjectsBrowser({ projects }: Props) {
           object-fit: cover;
           display: block;
         }
-        @keyframes reveal-from-under {
+        @keyframes emerge-from-cover {
           0% {
             opacity: 0;
-            transform: translate(var(--from-x, 0), -120px) rotate(var(--from-rot, 0)) scale(0.85);
+            transform: translate(var(--from-x, 0), var(--from-y, 0)) scale(0.35);
           }
           50% { opacity: 1; }
           100% {
             opacity: 1;
-            transform: translate(0, 0) rotate(0) scale(1);
+            transform: translate(0, 0) scale(1);
+          }
+        }
+        @keyframes cover-settle {
+          from { opacity: 0; transform: scale(0.98); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+
+        .project-info {
+          position: sticky;
+          top: calc(var(--nav-h, 56px) + 1rem);
+          padding: 1.25rem;
+          border: 1px solid var(--border, #27272a);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .project-info h2 {
+          margin: 0 0 0.4rem;
+          font-size: 1.4rem;
+        }
+        .project-info .date {
+          margin: 0 0 0.85rem;
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 0.85rem;
+          letter-spacing: 0.02em;
+        }
+        .project-info p {
+          color: var(--muted, #a1a1aa);
+          line-height: 1.55;
+          margin: 0 0 0.85rem;
+        }
+        .project-info .meta {
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.85rem;
+          margin-top: 1rem;
+        }
+
+        @media (max-width: 800px) {
+          .project-detail {
+            grid-template-columns: 1fr;
+          }
+          .project-info {
+            position: static;
+            order: -1;
           }
         }
       `}</style>
