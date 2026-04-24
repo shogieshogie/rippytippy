@@ -6,7 +6,7 @@ import type { Photo } from '../components/PhotoGrid';
  * Each subfolder is a project. The first image alphabetically is the cover,
  * unless a file named `cover.*` exists (it wins).
  *
- * Edit titles/descriptions in `meta` below — slug must match folder name.
+ * Edit titles/descriptions/dates in `meta` below — slug must match folder name.
  * Without any folders, falls back to placeholder projects so the page renders.
  */
 
@@ -20,6 +20,7 @@ export interface Project {
   slug: string;
   title: string;
   description: string;
+  date: string;
   cover: Photo;
   photos: Photo[];
 }
@@ -29,16 +30,15 @@ const projectModules = import.meta.glob<{ default: AssetMeta }>(
   { eager: true, import: 'default', query: { w: '1200', format: 'webp' } },
 );
 
-const meta: Record<string, { title?: string; description?: string }> = {
-  // 'my-project': { title: 'My Project', description: 'What it was about.' },
+const meta: Record<string, { title?: string; description?: string; date?: string }> = {
+  // 'my-project': { title: 'My Project', description: 'What it was about.', date: 'Apr 2026' },
 };
 
-const LOREM =
+const PLACEHOLDER_SUMMARY =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. ' +
-  'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' +
-  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ' +
-  'ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ' +
-  'in voluptate velit esse cillum dolore eu fugiat nulla pariatur.';
+  'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+
+const PLACEHOLDER_DATE = 'Apr 2026';
 
 function prettifySlug(slug: string): string {
   return slug
@@ -82,7 +82,8 @@ export function getProjects(): Project[] {
     projects.push({
       slug,
       title: m.title ?? prettifySlug(slug),
-      description: m.description ?? LOREM,
+      description: m.description ?? PLACEHOLDER_SUMMARY,
+      date: m.date ?? PLACEHOLDER_DATE,
       cover,
       photos,
     });
@@ -92,6 +93,7 @@ export function getProjects(): Project[] {
     return projects.sort((a, b) => a.title.localeCompare(b.title));
   }
 
+  const months = ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026'];
   return Array.from({ length: 4 }, (_, i) => {
     const slug = `project-${i + 1}`;
     const photos: Photo[] = Array.from({ length: 9 }, (_, j) => {
@@ -109,7 +111,8 @@ export function getProjects(): Project[] {
     return {
       slug,
       title: `Project ${i + 1}`,
-      description: LOREM,
+      description: PLACEHOLDER_SUMMARY,
+      date: months[i] ?? PLACEHOLDER_DATE,
       cover: photos[0],
       photos,
     };
