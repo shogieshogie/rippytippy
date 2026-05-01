@@ -6,7 +6,7 @@
     <title>Pixel Ruler &mdash; see how big N pixels really is</title>
     <meta
       name="description"
-      content="Interactive pixel ruler. Enter a pixel count, orientation, and angle to see exactly how big it is on your screen."
+      content="Interactive pixel ruler. Create lines, rectangles, and circles at exact pixel sizes and compare them side-by-side."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -16,122 +16,164 @@
       <aside class="panel controls" aria-label="Controls">
         <header class="brand">
           <h1>Pixel Ruler</h1>
-          <p class="tagline">See how big N pixels really is on your screen.</p>
+          <p class="tagline">See how big N pixels really is. Create, compare, and drag.</p>
         </header>
 
+        <!-- Shape type + add -->
         <section class="group">
-          <label for="length">Length (px)</label>
-          <div class="row">
-            <input
-              id="length"
-              type="number"
-              min="1"
-              max="4000"
-              step="1"
-              value="200"
-              inputmode="numeric"
-            />
-            <input
-              id="lengthRange"
-              type="range"
-              min="1"
-              max="2000"
-              step="1"
-              value="200"
-              aria-label="Length slider"
-            />
+          <div class="tabs" role="tablist" aria-label="Shape type">
+            <button class="tab active" data-type="line" role="tab" aria-selected="true">Line</button>
+            <button class="tab" data-type="rect" role="tab" aria-selected="false">Rectangle</button>
+            <button class="tab" data-type="circle" role="tab" aria-selected="false">Circle</button>
           </div>
+          <button type="button" id="addBtn" class="primary">+ Add line</button>
         </section>
 
-        <section class="group">
-          <label for="width">Thickness / width (px)</label>
-          <div class="row">
-            <input
-              id="width"
-              type="number"
-              min="1"
-              max="4000"
-              step="1"
-              value="1"
-              inputmode="numeric"
-            />
-            <input
-              id="widthRange"
-              type="range"
-              min="1"
-              max="800"
-              step="1"
-              value="1"
-              aria-label="Width slider"
-            />
-          </div>
-          <p class="hint">Set to 1 for a line, higher for a box.</p>
-        </section>
-
-        <section class="group">
-          <div class="label-row">
-            <label for="angle">Angle (deg)</label>
-            <div class="quick-buttons" role="group" aria-label="Orientation presets">
-              <button type="button" data-angle="0" class="chip">Horizontal</button>
-              <button type="button" data-angle="90" class="chip">Vertical</button>
-              <button type="button" data-angle="45" class="chip">45&deg;</button>
+        <!-- Line controls -->
+        <section class="group type-controls" data-type="line">
+          <div class="group">
+            <label for="lineLength">Length (px)</label>
+            <div class="row">
+              <input id="lineLength" type="number" min="1" max="4000" step="1" value="200" inputmode="numeric" />
+              <input id="lineLengthRange" type="range" min="1" max="2000" step="1" value="200" aria-label="Length slider" />
             </div>
           </div>
-          <div class="row">
-            <input
-              id="angle"
-              type="number"
-              min="-180"
-              max="180"
-              step="1"
-              value="0"
-              inputmode="numeric"
-            />
-            <input
-              id="angleRange"
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              value="0"
-              aria-label="Angle slider"
-            />
+
+          <div class="group">
+            <label for="lineThickness">Thickness (px)</label>
+            <div class="row">
+              <input id="lineThickness" type="number" min="1" max="4000" step="1" value="1" inputmode="numeric" />
+              <input id="lineThicknessRange" type="range" min="1" max="200" step="1" value="1" aria-label="Thickness slider" />
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="label-row">
+              <label for="lineAngle">Angle (deg)</label>
+              <div class="quick-buttons" role="group" aria-label="Orientation presets">
+                <button type="button" data-angle-for="line" data-angle="0" class="chip">Horizontal</button>
+                <button type="button" data-angle-for="line" data-angle="90" class="chip">Vertical</button>
+                <button type="button" data-angle-for="line" data-angle="45" class="chip">45&deg;</button>
+              </div>
+            </div>
+            <div class="row">
+              <input id="lineAngle" type="number" min="-180" max="180" step="1" value="0" inputmode="numeric" />
+              <input id="lineAngleRange" type="range" min="-180" max="180" step="1" value="0" aria-label="Angle slider" />
+            </div>
           </div>
         </section>
 
-        <section class="group">
-          <span class="label-row-title">Mode</span>
-          <div class="segmented" role="group" aria-label="Pixel mode">
-            <button type="button" id="modeCss" class="seg active" aria-pressed="true">
-              CSS pixels
-            </button>
-            <button type="button" id="modePhysical" class="seg" aria-pressed="false">
-              Physical size
-            </button>
+        <!-- Rectangle controls -->
+        <section class="group type-controls hidden" data-type="rect">
+          <div class="group">
+            <label for="rectWidth">Width (px)</label>
+            <div class="row">
+              <input id="rectWidth" type="number" min="1" max="4000" step="1" value="200" inputmode="numeric" />
+              <input id="rectWidthRange" type="range" min="1" max="2000" step="1" value="200" aria-label="Width slider" />
+            </div>
           </div>
-          <p class="hint" id="modeHint">
-            CSS pixels &mdash; matches what gets shipped. Dead accurate in designs.
-          </p>
+
+          <div class="group">
+            <label for="rectHeight">Height (px)</label>
+            <div class="row">
+              <input id="rectHeight" type="number" min="1" max="4000" step="1" value="100" inputmode="numeric" />
+              <input id="rectHeightRange" type="range" min="1" max="2000" step="1" value="100" aria-label="Height slider" />
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="label-row">
+              <label for="rectAngle">Angle (deg)</label>
+              <div class="quick-buttons" role="group" aria-label="Orientation presets">
+                <button type="button" data-angle-for="rect" data-angle="0" class="chip">0&deg;</button>
+                <button type="button" data-angle-for="rect" data-angle="45" class="chip">45&deg;</button>
+                <button type="button" data-angle-for="rect" data-angle="90" class="chip">90&deg;</button>
+              </div>
+            </div>
+            <div class="row">
+              <input id="rectAngle" type="number" min="-180" max="180" step="1" value="0" inputmode="numeric" />
+              <input id="rectAngleRange" type="range" min="-180" max="180" step="1" value="0" aria-label="Angle slider" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Circle controls -->
+        <section class="group type-controls hidden" data-type="circle">
+          <div class="group">
+            <div class="label-row">
+              <span class="label-row-title">Size by</span>
+              <div class="segmented small" role="group" aria-label="Size mode">
+                <button type="button" class="seg active" id="circleModeDiameter" aria-pressed="true">Diameter</button>
+                <button type="button" class="seg" id="circleModeRadius" aria-pressed="false">Radius</button>
+              </div>
+            </div>
+            <label for="circleSize" id="circleSizeLabel">Diameter (px)</label>
+            <div class="row">
+              <input id="circleSize" type="number" min="1" max="4000" step="1" value="100" inputmode="numeric" />
+              <input id="circleSizeRange" type="range" min="1" max="2000" step="1" value="100" aria-label="Circle size slider" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Object list -->
+        <section class="group">
+          <div class="label-row">
+            <span class="label-row-title">Objects <span class="muted" id="objectCount">(0)</span></span>
+            <button type="button" id="clearAllBtn" class="linkish" title="Delete all objects">Clear all</button>
+          </div>
+          <ul class="object-list" id="objectList" role="listbox" aria-label="Objects on canvas"></ul>
+          <p class="hint" id="listEmpty">No objects yet. Click <em>+ Add line</em> above to start.</p>
+        </section>
+
+        <!-- Presets (type-aware) -->
+        <section class="group presets-section">
+          <span class="label-row-title">Presets</span>
+          <div class="presets" id="presetsLine">
+            <button type="button" class="preset" data-preset-type="line" data-preset="16">Body text 16</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="20">Tweet row 20</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="40">Button 40</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="44">iOS touch 44</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="100">100</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="320">Mobile 320</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="768">Tablet 768</button>
+            <button type="button" class="preset" data-preset-type="line" data-preset="1024">Desktop 1024</button>
+          </div>
+          <div class="presets hidden" id="presetsRect">
+            <button type="button" class="preset" data-preset-type="rect" data-preset="40x160">Button 40&times;160</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="48x200">Big button 48&times;200</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="40x320">Input 40&times;320</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="100x100">Thumb 100&times;100</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="200x320">Card 200&times;320</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="480x640">Modal 480&times;640</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="390x844">iPhone 14/15</button>
+            <button type="button" class="preset" data-preset-type="rect" data-preset="1024x768">iPad landscape</button>
+          </div>
+          <div class="presets hidden" id="presetsCircle">
+            <button type="button" class="preset" data-preset-type="circle" data-preset="16">Checkbox 16</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="20">Radio 20</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="24">Icon 24</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="32">Avatar 32</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="40">Avatar 40</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="44">iOS touch 44</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="64">Avatar 64</button>
+            <button type="button" class="preset" data-preset-type="circle" data-preset="120">Profile 120</button>
+          </div>
+        </section>
+
+        <!-- Mode toggle -->
+        <section class="group">
+          <span class="label-row-title">Pixel mode</span>
+          <div class="segmented" role="group" aria-label="Pixel mode">
+            <button type="button" id="modeCss" class="seg active" aria-pressed="true">CSS pixels</button>
+            <button type="button" id="modePhysical" class="seg" aria-pressed="false">Physical size</button>
+          </div>
+          <p class="hint" id="modeHint">CSS pixels &mdash; matches what gets shipped. Dead accurate in designs.</p>
           <button type="button" id="calibrateBtn" class="secondary hidden">Calibrate&hellip;</button>
         </section>
 
-        <section class="group">
-          <span class="label-row-title">Quick presets</span>
-          <div class="presets">
-            <button type="button" class="preset" data-length="16">Body text 16</button>
-            <button type="button" class="preset" data-length="20">Tweet row 20</button>
-            <button type="button" class="preset" data-length="40">Button 40</button>
-            <button type="button" class="preset" data-length="44">iOS touch 44</button>
-            <button type="button" class="preset" data-length="100">100</button>
-            <button type="button" class="preset" data-length="320">Mobile 320</button>
-            <button type="button" class="preset" data-length="768">Tablet 768</button>
-            <button type="button" class="preset" data-length="1024">Desktop 1024</button>
-          </div>
-        </section>
-
         <footer class="readout" aria-live="polite">
-          <div class="readout-main" id="readoutMain">200&nbsp;&times;&nbsp;1 px &middot; 0&deg;</div>
-          <div class="readout-sub" id="readoutSub"></div>
+          <div class="readout-main" id="readoutMain">No active object</div>
+          <div class="readout-sub" id="readoutSub">Click an object to select it, or add a new one.</div>
         </footer>
       </aside>
 
@@ -139,12 +181,14 @@
       <section class="panel canvas-wrap" aria-label="Canvas">
         <div class="canvas" id="canvas">
           <div class="crosshair" aria-hidden="true"></div>
-          <div class="shape" id="shape" role="img" aria-label="Rendered pixel shape"></div>
+          <!-- Shapes rendered dynamically into here -->
         </div>
         <div class="canvas-footer">
           <span id="canvasSize"></span>
           <span class="dot" aria-hidden="true"></span>
           <span>Grid: 10px minor &middot; 100px major</span>
+          <span class="dot" aria-hidden="true"></span>
+          <span class="muted">Drag to move &middot; corner to rotate</span>
         </div>
       </section>
     </main>
@@ -163,9 +207,7 @@
             <div class="cal-handle" id="calHandle" role="slider" aria-label="Resize card" tabindex="0"></div>
           </div>
         </div>
-        <div class="cal-info">
-          <span id="calReadout">&mdash;</span>
-        </div>
+        <div class="cal-info"><span id="calReadout">&mdash;</span></div>
         <div class="modal-actions">
           <button type="button" class="secondary" id="calCancel">Cancel</button>
           <button type="button" class="secondary" id="calReset">Reset</button>
