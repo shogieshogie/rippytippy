@@ -320,6 +320,37 @@ input[type="range"]::-moz-range-thumb {
   text-decoration: underline;
 }
 
+/* Toggle pill (e.g. Snap to grid) */
+.toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-dim);
+  transition: all 120ms ease;
+  align-self: flex-start;
+}
+.toggle-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.toggle-pill[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.toggle-pill[aria-pressed="true"] .muted {
+  color: #ffffffcc;
+}
+.toggle-pill .pill-sub {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
 /* Object list */
 .object-list {
   list-style: none;
@@ -333,15 +364,15 @@ input[type="range"]::-moz-range-thumb {
 }
 .object-item {
   display: grid;
-  grid-template-columns: 18px 1fr auto;
+  grid-template-columns: 26px 1fr auto;
   gap: 8px;
   align-items: center;
-  padding: 7px 10px;
+  padding: 6px 10px 6px 6px;
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 120ms, background 120ms;
+  transition: border-color 120ms, background 120ms, opacity 120ms;
 }
 .object-item:hover {
   border-color: var(--accent);
@@ -349,15 +380,47 @@ input[type="range"]::-moz-range-thumb {
 .object-item.active {
   border-color: var(--accent);
   background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
-.object-item .ico {
+/* Hidden rows are dimmed with a struck-through label */
+.object-item[data-visible="false"] {
+  opacity: 0.6;
+}
+.object-item[data-visible="false"] .meta .name,
+.object-item[data-visible="false"] .meta .dims {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+/* Eye button: toggles visibility. Independent of active state. */
+.object-item .eye-btn {
+  background: transparent;
+  border: 0;
+  padding: 3px;
   color: var(--text-dim);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color 120ms, background 120ms;
 }
-.object-item.active .ico {
+.object-item .eye-btn:hover {
   color: var(--accent);
+  background: var(--panel);
+}
+.object-item .eye-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* Eye SVG pupil vs slash: slash only shown when the row is hidden */
+.object-item .eye-slash {
+  display: none;
+}
+.object-item[data-visible="false"] .eye-slash {
+  display: inline;
+}
+.object-item[data-visible="false"] .eye-pupil {
+  display: none;
 }
 .object-item .meta {
   display: flex;
@@ -473,7 +536,7 @@ input[type="range"]::-moz-range-thumb {
   position: absolute;
   left: 50%;
   top: 50%;
-  background: var(--shape-inactive);
+  background: var(--shape);
   transform-origin: center center;
   /* transform set inline by JS */
   cursor: pointer;
@@ -482,18 +545,16 @@ input[type="range"]::-moz-range-thumb {
 .shape[data-type="circle"] {
   border-radius: 50%;
 }
+/* Active: clear outline ring + soft glow + handles (added via JS) */
 .shape[data-active="true"] {
-  background: var(--shape);
-  box-shadow: 0 0 0 1px #ffffff22, 0 10px 40px #7c9cff55;
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+  box-shadow: 0 10px 30px #7c9cff33;
   cursor: grab;
   z-index: 2;
 }
 .shape[data-active="true"]:active {
   cursor: grabbing;
-}
-/* thin line readability: add a subtle outline when height <= 2 */
-.shape[data-thin="true"] {
-  outline: 0;
 }
 
 /* Handles (only shown on active shape) */
@@ -506,43 +567,42 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   box-shadow: 0 1px 3px #0006;
   cursor: grab;
-  /* keep size constant regardless of parent scaling (none here, but future-proof) */
 }
 .handle:active {
   cursor: grabbing;
 }
-/* Corner positions for rectangles (relative to shape) */
-.handle.tl {
-  left: 0;
-  top: 0;
-  transform: translate(-50%, -50%);
+/* Corners = resize (drag corner) */
+.handle.tl { left: 0;    top: 0;    transform: translate(-50%, -50%); cursor: nwse-resize; }
+.handle.tr { right: 0;   top: 0;    transform: translate(50%, -50%);  cursor: nesw-resize; }
+.handle.bl { left: 0;    bottom: 0; transform: translate(-50%, 50%);  cursor: nesw-resize; }
+.handle.br { right: 0;   bottom: 0; transform: translate(50%, 50%);   cursor: nwse-resize; }
+/* Edge midpoints (bars) = single-axis resize */
+.handle.t  { left: 50%;  top: 0;    transform: translate(-50%, -50%); cursor: ns-resize; width: 22px; height: 7px; border-radius: 3px; }
+.handle.b  { left: 50%;  bottom: 0; transform: translate(-50%, 50%);  cursor: ns-resize; width: 22px; height: 7px; border-radius: 3px; }
+.handle.l  { left: 0;    top: 50%;  transform: translate(-50%, -50%); cursor: ew-resize; width: 7px;  height: 22px; border-radius: 3px; }
+.handle.r  { right: 0;   top: 50%;  transform: translate(50%, -50%);  cursor: ew-resize; width: 7px;  height: 22px; border-radius: 3px; }
+/* Rotation knob floats above top-center */
+.handle.rot {
+  top: -30px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  cursor: grab;
+  border-color: var(--accent-2);
 }
-.handle.tr {
-  right: 0;
-  top: 0;
-  transform: translate(50%, -50%);
+.handle.rot::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 2px;
+  height: 14px;
+  background: var(--accent-2);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
-.handle.bl {
-  left: 0;
-  bottom: 0;
-  transform: translate(-50%, 50%);
-}
-.handle.br {
-  right: 0;
-  bottom: 0;
-  transform: translate(50%, 50%);
-}
-/* Line endpoints */
-.handle.start {
-  left: 0;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-.handle.end {
-  right: 0;
-  top: 50%;
-  transform: translate(50%, -50%);
-}
+/* Line endpoints (drag to relocate: resize + rotate in one motion) */
+.handle.start { left: 0;  top: 50%; transform: translate(-50%, -50%); cursor: grab; }
+.handle.end   { right: 0; top: 50%; transform: translate(50%, -50%);  cursor: grab; }
 
 /* Shape label (tiny tag above active shape) */
 .shape-label {

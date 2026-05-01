@@ -28,6 +28,8 @@
     mode: "css", // 'css' | 'physical'
     pxPerMm: Number(localStorage.getItem(STORAGE_KEY)) || null,
     nextId: 1,
+    snapEnabled: false,
+    snapStep: 10,
   };
 
   // ---------- Helpers ----------
@@ -80,6 +82,9 @@
   const listEmpty = $("listEmpty");
   const clearAllBtn = $("clearAllBtn");
 
+  // Snap toggle
+  const snapBtn = $("snapBtn");
+
   // Readout + canvas footer
   const readoutMain = $("readoutMain");
   const readoutSub = $("readoutSub");
@@ -103,10 +108,9 @@
   // ---------- Object CRUD ----------
   function createObject(type) {
     const id = state.nextId++;
-    const count = state.objects.filter((o) => o.type === type).length;
     // Spawn offset so objects don't stack at center
     const offset = state.objects.length * 30;
-    const base = { id, type, x: offset, y: offset, angle: 0 };
+    const base = { id, type, x: offset, y: offset, angle: 0, visible: true };
 
     let obj;
     if (type === "line") {
@@ -123,6 +127,14 @@
     renderAll();
     syncInputsFromActive();
     return obj;
+  }
+
+  function toggleVisibility(id) {
+    const o = state.objects.find((x) => x.id === id);
+    if (!o) return;
+    o.visible = !o.visible;
+    renderAll();
+    updateReadout();
   }
 
   function deleteObject(id) {
@@ -225,6 +237,7 @@
     if (o.type === "line") main = `Line \u00b7 ${o.length} \u00d7 ${o.thickness} px \u00b7 ${fmtAngle(o.angle)}`;
     else if (o.type === "rect") main = `Rect \u00b7 ${o.width} \u00d7 ${o.height} px \u00b7 ${fmtAngle(o.angle)}`;
     else main = `Circle \u00b7 \u2300 ${o.diameter} px (r ${o.diameter / 2})`;
+    if (!o.visible) main += " \u00b7 (hidden)";
     readoutMain.textContent = main;
 
     if (state.mode === "physical" && state.pxPerMm) {
@@ -284,6 +297,15 @@
 
   function updateShapeDom(entry, o) {
     const { root } = entry;
+
+    // Hidden objects: take off the canvas entirely (keep DOM so we can restore fast)
+    if (!o.visible) {
+      root.style.display = "none";
+      removeHandlesAndLabel(entry);
+      return;
+    }
+    root.style.display = "";
+
     const isActive = o.id === state.activeId;
     root.dataset.active = isActive ? "true" : "false";
 
@@ -292,7 +314,6 @@
     if (o.type === "line") {
       w = o.length;
       h = o.thickness;
-      root.dataset.thin = o.thickness <= 2 ? "true" : "false";
     } else if (o.type === "rect") {
       w = o.width;
       h = o.height;
@@ -312,7 +333,6 @@
     if (isActive) ensureHandlesAndLabel(entry, o);
     else removeHandlesAndLabel(entry);
 
-    // Keep label text up to date when active
     if (isActive && entry.label) entry.label.textContent = describeForLabel(o);
   }
 
@@ -336,8 +356,16 @@
     const ang = o.type === "circle" ? 0 : o.angle;
     entry.label.style.setProperty("--counter-rot", `${-ang}deg`);
 
-    // Handles
-    const wanted = o.type === "line" ? ["start", "end"] : o.type === "rect" ? ["tl", "tr", "bl", "br"] : [];
+    // Handles — per-type handle layout
+    let wanted;
+    if (o.type === "line") {
+      wanted = ["start", "end", "rot"];
+    } else if (o.type === "rect") {
+      wanted = ["tl", "tr", "bl", "br", "t", "b", "l", "r", "rot"];
+    } else {
+      // circle
+      wanted = ["t", "b", "l", "r"];
+    }
     // Remove handles that are no longer wanted
     for (const k of Object.keys(entry.handles)) {
       if (!wanted.includes(k)) {
@@ -350,10 +378,24 @@
         const h = document.createElement("div");
         h.className = `handle ${pos}`;
         h.dataset.handle = pos;
-        wireHandlePointer(h, o.id);
+        wireHandleByRole(h, o, pos);
         root.appendChild(h);
         entry.handles[pos] = h;
       }
+    }
+  }
+
+  // Pick the right interaction for each handle role.
+  function wireHandleByRole(el, o, pos) {
+    if (o.type === "line") {
+      if (pos === "rot") wireRotateHandle(el, o.id);
+      else wireLineEndHandle(el, o.id, pos); // start | end
+    } else if (o.type === "rect") {
+      if (pos === "rot") wireRotateHandle(el, o.id);
+      else if (pos === "tl" || pos === "tr" || pos === "bl" || pos === "br") wireCornerResize(el, o.id, pos);
+      else wireEdgeResize(el, o.id, pos);
+    } else if (o.type === "circle") {
+      wireCircleResize(el, o.id);
     }
   }
 
@@ -396,8 +438,11 @@
     const li = document.createElement("li");
     li.className = "object-item";
     li.dataset.id = String(o.id);
+    li.dataset.visible = "true";
     li.innerHTML = `
-      <span class="ico" aria-hidden="true">${iconFor(o.type)}</span>
+      <button type="button" class="eye-btn" aria-label="Toggle visibility" title="Show / hide on canvas">
+        ${iconFor()}
+      </button>
       <span class="meta">
         <span class="name"></span>
         <span class="dims"></span>
@@ -408,9 +453,14 @@
         </svg>
       </button>
     `;
+    // Row click = make active. Eye/trash clicks don't propagate.
     li.addEventListener("click", (e) => {
-      if (e.target.closest(".trash")) return;
+      if (e.target.closest(".trash") || e.target.closest(".eye-btn")) return;
       setActive(o.id);
+    });
+    li.querySelector(".eye-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleVisibility(o.id);
     });
     li.querySelector(".trash").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -426,8 +476,8 @@
     const isActive = o.id === state.activeId;
     li.classList.toggle("active", isActive);
     li.setAttribute("aria-selected", String(isActive));
+    li.dataset.visible = o.visible ? "true" : "false";
 
-    // Index in list
     if (idx === undefined) idx = state.objects.findIndex((x) => x.id === o.id);
 
     const name = li.querySelector(".name");
@@ -442,14 +492,14 @@
     return `\u2300 ${o.diameter} px`;
   }
 
-  function iconFor(type) {
-    if (type === "line") {
-      return `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8h12"/></svg>`;
-    }
-    if (type === "rect") {
-      return `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="8" rx="1"/></svg>`;
-    }
-    return `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.4"/></svg>`;
+  // Single eye icon used for all objects.
+  // `.eye-pupil` shows on the active row (eye open); `.eye-slash` shows on inactive rows (eye closed).
+  function iconFor(/* type */) {
+    return `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M1.2 8C3 4.2 5.4 2.8 8 2.8c2.6 0 5 1.4 6.8 5.2-1.8 3.8-4.2 5.2-6.8 5.2-2.6 0-5-1.4-6.8-5.2Z"/>
+      <circle class="eye-pupil" cx="8" cy="8" r="1.9" fill="currentColor" stroke="none"/>
+      <line class="eye-slash" x1="2.5" y1="2.5" x2="13.5" y2="13.5"/>
+    </svg>`;
   }
 
   // ---------- Input wiring ----------
@@ -568,14 +618,17 @@
     syncInputsFromActive();
   });
 
+  snapBtn.addEventListener("click", () => {
+    state.snapEnabled = !state.snapEnabled;
+    snapBtn.setAttribute("aria-pressed", String(state.snapEnabled));
+  });
+
   // ---------- Canvas interactions ----------
   function wireShapePointer(root, id) {
     root.addEventListener("pointerdown", (e) => {
       // Handles handle their own pointerdown via stopPropagation
       if (e.target.classList.contains("handle")) return;
-      // Select it
       if (state.activeId !== id) setActive(id);
-      // Only drag if this IS the active shape (prevents drag-on-first-click that also selects)
       if (state.activeId !== id) return;
 
       e.preventDefault();
@@ -588,24 +641,37 @@
       const oy = o.y;
       root.setPointerCapture(e.pointerId);
 
-      const move = (ev) => {
+      attachDrag(root, (ev) => {
         const dx = ev.clientX - startX;
         const dy = ev.clientY - startY;
-        updateActive({ x: ox + dx, y: oy + dy });
-      };
-      const up = (ev) => {
-        root.releasePointerCapture?.(ev.pointerId);
-        root.removeEventListener("pointermove", move);
-        root.removeEventListener("pointerup", up);
-        root.removeEventListener("pointercancel", up);
-      };
-      root.addEventListener("pointermove", move);
-      root.addEventListener("pointerup", up);
-      root.addEventListener("pointercancel", up);
+        let nx = ox + dx;
+        let ny = oy + dy;
+        if (state.snapEnabled) {
+          const step = state.snapStep;
+          nx = Math.round(nx / step) * step;
+          ny = Math.round(ny / step) * step;
+        }
+        updateActive({ x: nx, y: ny });
+      });
     });
   }
 
-  function wireHandlePointer(handleEl, id) {
+  // Helper: attach a standard pointer-drag lifecycle (down wiring is caller's responsibility)
+  function attachDrag(el, move, up) {
+    el.addEventListener("pointermove", move);
+    const cleanup = (e) => {
+      el.releasePointerCapture?.(e.pointerId);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", cleanup);
+      el.removeEventListener("pointercancel", cleanup);
+      up?.(e);
+    };
+    el.addEventListener("pointerup", cleanup);
+    el.addEventListener("pointercancel", cleanup);
+  }
+
+  // Rotation knob (above the top edge for rectangles). Rotates around shape center.
+  function wireRotateHandle(handleEl, id) {
     handleEl.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -613,36 +679,201 @@
       if (!o) return;
       if (state.activeId !== id) setActive(id);
 
-      // For lines/rects: rotate by computing angle from shape center to pointer
       const rect = domById.get(id).root.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
 
-      // Anchor angle: current pointer angle minus current object angle
       const initialPointerAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
       const anchorOffset = initialPointerAngle - o.angle;
 
       handleEl.setPointerCapture(e.pointerId);
 
-      const move = (ev) => {
+      attachDrag(handleEl, (ev) => {
         const ang = Math.atan2(ev.clientY - cy, ev.clientX - cx) * (180 / Math.PI);
         let next = ang - anchorOffset;
-        // Snap to 15deg with Shift
         if (ev.shiftKey) next = Math.round(next / 15) * 15;
-        // Normalize to [-180, 180]
         next = ((next + 540) % 360) - 180;
         updateActive({ angle: Math.round(next * 10) / 10 });
         syncInputsFromActive();
-      };
-      const up = (ev) => {
-        handleEl.releasePointerCapture?.(ev.pointerId);
-        handleEl.removeEventListener("pointermove", move);
-        handleEl.removeEventListener("pointerup", up);
-        handleEl.removeEventListener("pointercancel", up);
-      };
-      handleEl.addEventListener("pointermove", move);
-      handleEl.addEventListener("pointerup", up);
-      handleEl.addEventListener("pointercancel", up);
+      });
+    });
+  }
+
+  // Rectangle corner handles — drag corner to pointer, opposite corner stays fixed.
+  // Updates width, height, and x/y (center moves).
+  function wireCornerResize(handleEl, id, which) {
+    handleEl.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const o = state.objects.find((x) => x.id === id);
+      if (!o || o.type !== "rect") return;
+      if (state.activeId !== id) setActive(id);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const centerX = canvasRect.left + canvasRect.width / 2 + o.x;
+      const centerY = canvasRect.top + canvasRect.height / 2 + o.y;
+      const angRad = (o.angle * Math.PI) / 180;
+      const xAxis = { x: Math.cos(angRad), y: Math.sin(angRad) };
+      const yAxis = { x: -Math.sin(angRad), y: Math.cos(angRad) };
+      const halfW = o.width / 2;
+      const halfH = o.height / 2;
+
+      // Which side of center each axis points toward, for this corner
+      const xSign = which === "tr" || which === "br" ? 1 : -1;
+      const ySign = which === "bl" || which === "br" ? 1 : -1;
+
+      // Opposite corner (fixed during drag), in page coords
+      const oppX = centerX - xSign * halfW * xAxis.x - ySign * halfH * yAxis.x;
+      const oppY = centerY - xSign * halfW * xAxis.y - ySign * halfH * yAxis.y;
+
+      handleEl.setPointerCapture(e.pointerId);
+
+      attachDrag(handleEl, (ev) => {
+        const dx = ev.clientX - oppX;
+        const dy = ev.clientY - oppY;
+        const projX = (dx * xAxis.x + dy * xAxis.y) * xSign;
+        const projY = (dx * yAxis.x + dy * yAxis.y) * ySign;
+        const newW = Math.max(1, projX);
+        const newH = Math.max(1, projY);
+        const newCx = oppX + xSign * (newW / 2) * xAxis.x + ySign * (newH / 2) * yAxis.x;
+        const newCy = oppY + xSign * (newW / 2) * xAxis.y + ySign * (newH / 2) * yAxis.y;
+        updateActive({
+          width: Math.round(newW),
+          height: Math.round(newH),
+          x: Math.round(newCx - canvasRect.left - canvasRect.width / 2),
+          y: Math.round(newCy - canvasRect.top - canvasRect.height / 2),
+        });
+        syncInputsFromActive();
+      });
+    });
+  }
+
+  // Rectangle edge handles — single-axis resize. Opposite edge center stays fixed.
+  function wireEdgeResize(handleEl, id, which) {
+    handleEl.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const o = state.objects.find((x) => x.id === id);
+      if (!o || o.type !== "rect") return;
+      if (state.activeId !== id) setActive(id);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const centerX = canvasRect.left + canvasRect.width / 2 + o.x;
+      const centerY = canvasRect.top + canvasRect.height / 2 + o.y;
+      const angRad = (o.angle * Math.PI) / 180;
+      const xAxis = { x: Math.cos(angRad), y: Math.sin(angRad) };
+      const yAxis = { x: -Math.sin(angRad), y: Math.cos(angRad) };
+      const halfW = o.width / 2;
+      const halfH = o.height / 2;
+
+      const xSign = which === "r" ? 1 : which === "l" ? -1 : 0;
+      const ySign = which === "b" ? 1 : which === "t" ? -1 : 0;
+
+      // Opposite edge center
+      const oppX = centerX - xSign * halfW * xAxis.x - ySign * halfH * yAxis.x;
+      const oppY = centerY - xSign * halfW * xAxis.y - ySign * halfH * yAxis.y;
+
+      handleEl.setPointerCapture(e.pointerId);
+
+      attachDrag(handleEl, (ev) => {
+        const dx = ev.clientX - oppX;
+        const dy = ev.clientY - oppY;
+        if (xSign !== 0) {
+          const proj = (dx * xAxis.x + dy * xAxis.y) * xSign;
+          const newW = Math.max(1, proj);
+          const newCx = oppX + xSign * (newW / 2) * xAxis.x;
+          const newCy = oppY + xSign * (newW / 2) * xAxis.y;
+          updateActive({
+            width: Math.round(newW),
+            x: Math.round(newCx - canvasRect.left - canvasRect.width / 2),
+            y: Math.round(newCy - canvasRect.top - canvasRect.height / 2),
+          });
+        } else {
+          const proj = (dx * yAxis.x + dy * yAxis.y) * ySign;
+          const newH = Math.max(1, proj);
+          const newCx = oppX + ySign * (newH / 2) * yAxis.x;
+          const newCy = oppY + ySign * (newH / 2) * yAxis.y;
+          updateActive({
+            height: Math.round(newH),
+            x: Math.round(newCx - canvasRect.left - canvasRect.width / 2),
+            y: Math.round(newCy - canvasRect.top - canvasRect.height / 2),
+          });
+        }
+        syncInputsFromActive();
+      });
+    });
+  }
+
+  // Circle cardinal handles — drag to resize diameter. Center stays fixed.
+  function wireCircleResize(handleEl, id) {
+    handleEl.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const o = state.objects.find((x) => x.id === id);
+      if (!o || o.type !== "circle") return;
+      if (state.activeId !== id) setActive(id);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const centerX = canvasRect.left + canvasRect.width / 2 + o.x;
+      const centerY = canvasRect.top + canvasRect.height / 2 + o.y;
+
+      handleEl.setPointerCapture(e.pointerId);
+
+      attachDrag(handleEl, (ev) => {
+        const r = Math.max(1, Math.hypot(ev.clientX - centerX, ev.clientY - centerY));
+        updateActive({ diameter: Math.round(r * 2) });
+        syncInputsFromActive();
+      });
+    });
+  }
+
+  // Line endpoints — drag to relocate endpoint. Opposite endpoint stays fixed.
+  // Naturally changes length, angle, and center.
+  function wireLineEndHandle(handleEl, id, which) {
+    handleEl.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const o = state.objects.find((x) => x.id === id);
+      if (!o || o.type !== "line") return;
+      if (state.activeId !== id) setActive(id);
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const centerX = canvasRect.left + canvasRect.width / 2 + o.x;
+      const centerY = canvasRect.top + canvasRect.height / 2 + o.y;
+      const angRad = (o.angle * Math.PI) / 180;
+      const halfLen = o.length / 2;
+      const dir = { x: Math.cos(angRad), y: Math.sin(angRad) };
+
+      // Fixed endpoint (the other end)
+      const fixedX = which === "start" ? centerX + halfLen * dir.x : centerX - halfLen * dir.x;
+      const fixedY = which === "start" ? centerY + halfLen * dir.y : centerY - halfLen * dir.y;
+
+      handleEl.setPointerCapture(e.pointerId);
+
+      attachDrag(handleEl, (ev) => {
+        const px = ev.clientX;
+        const py = ev.clientY;
+        const dx = px - fixedX;
+        const dy = py - fixedY;
+        const newLen = Math.max(1, Math.hypot(dx, dy));
+        // angle points from start->end
+        const rad = which === "end"
+          ? Math.atan2(dy, dx)
+          : Math.atan2(-dy, -dx);
+        let newAngle = rad * (180 / Math.PI);
+        if (ev.shiftKey) newAngle = Math.round(newAngle / 15) * 15;
+        newAngle = Math.round(newAngle * 10) / 10;
+
+        const newCx = (px + fixedX) / 2;
+        const newCy = (py + fixedY) / 2;
+        updateActive({
+          length: Math.round(newLen),
+          angle: newAngle,
+          x: Math.round(newCx - canvasRect.left - canvasRect.width / 2),
+          y: Math.round(newCy - canvasRect.top - canvasRect.height / 2),
+        });
+        syncInputsFromActive();
+      });
     });
   }
 
