@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Pixel Ruler &mdash; see how big N pixels really is</title>
+    <meta
+      name="description"
+      content="Interactive pixel ruler. Enter a pixel count, orientation, and angle to see exactly how big it is on your screen."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <!-- Left: controls -->
+      <aside class="panel controls" aria-label="Controls">
+        <header class="brand">
+          <h1>Pixel Ruler</h1>
+          <p class="tagline">See how big N pixels really is on your screen.</p>
+        </header>
+
+        <section class="group">
+          <label for="length">Length (px)</label>
+          <div class="row">
+            <input
+              id="length"
+              type="number"
+              min="1"
+              max="4000"
+              step="1"
+              value="200"
+              inputmode="numeric"
+            />
+            <input
+              id="lengthRange"
+              type="range"
+              min="1"
+              max="2000"
+              step="1"
+              value="200"
+              aria-label="Length slider"
+            />
+          </div>
+        </section>
+
+        <section class="group">
+          <label for="width">Thickness / width (px)</label>
+          <div class="row">
+            <input
+              id="width"
+              type="number"
+              min="1"
+              max="4000"
+              step="1"
+              value="1"
+              inputmode="numeric"
+            />
+            <input
+              id="widthRange"
+              type="range"
+              min="1"
+              max="800"
+              step="1"
+              value="1"
+              aria-label="Width slider"
+            />
+          </div>
+          <p class="hint">Set to 1 for a line, higher for a box.</p>
+        </section>
+
+        <section class="group">
+          <div class="label-row">
+            <label for="angle">Angle (deg)</label>
+            <div class="quick-buttons" role="group" aria-label="Orientation presets">
+              <button type="button" data-angle="0" class="chip">Horizontal</button>
+              <button type="button" data-angle="90" class="chip">Vertical</button>
+              <button type="button" data-angle="45" class="chip">45&deg;</button>
+            </div>
+          </div>
+          <div class="row">
+            <input
+              id="angle"
+              type="number"
+              min="-180"
+              max="180"
+              step="1"
+              value="0"
+              inputmode="numeric"
+            />
+            <input
+              id="angleRange"
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              value="0"
+              aria-label="Angle slider"
+            />
+          </div>
+        </section>
+
+        <section class="group">
+          <span class="label-row-title">Mode</span>
+          <div class="segmented" role="group" aria-label="Pixel mode">
+            <button type="button" id="modeCss" class="seg active" aria-pressed="true">
+              CSS pixels
+            </button>
+            <button type="button" id="modePhysical" class="seg" aria-pressed="false">
+              Physical size
+            </button>
+          </div>
+          <p class="hint" id="modeHint">
+            CSS pixels &mdash; matches what gets shipped. Dead accurate in designs.
+          </p>
+          <button type="button" id="calibrateBtn" class="secondary hidden">Calibrate&hellip;</button>
+        </section>
+
+        <section class="group">
+          <span class="label-row-title">Quick presets</span>
+          <div class="presets">
+            <button type="button" class="preset" data-length="16">Body text 16</button>
+            <button type="button" class="preset" data-length="20">Tweet row 20</button>
+            <button type="button" class="preset" data-length="40">Button 40</button>
+            <button type="button" class="preset" data-length="44">iOS touch 44</button>
+            <button type="button" class="preset" data-length="100">100</button>
+            <button type="button" class="preset" data-length="320">Mobile 320</button>
+            <button type="button" class="preset" data-length="768">Tablet 768</button>
+            <button type="button" class="preset" data-length="1024">Desktop 1024</button>
+          </div>
+        </section>
+
+        <footer class="readout" aria-live="polite">
+          <div class="readout-main" id="readoutMain">200&nbsp;&times;&nbsp;1 px &middot; 0&deg;</div>
+          <div class="readout-sub" id="readoutSub"></div>
+        </footer>
+      </aside>
+
+      <!-- Right: canvas -->
+      <section class="panel canvas-wrap" aria-label="Canvas">
+        <div class="canvas" id="canvas">
+          <div class="crosshair" aria-hidden="true"></div>
+          <div class="shape" id="shape" role="img" aria-label="Rendered pixel shape"></div>
+        </div>
+        <div class="canvas-footer">
+          <span id="canvasSize"></span>
+          <span class="dot" aria-hidden="true"></span>
+          <span>Grid: 10px minor &middot; 100px major</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- Calibration modal -->
+    <div class="modal-backdrop hidden" id="calModal" role="dialog" aria-modal="true" aria-labelledby="calTitle">
+      <div class="modal">
+        <h2 id="calTitle">Calibrate to a real object</h2>
+        <p>
+          Hold a standard credit card (or any ID card) up to your screen. Drag the handle on
+          the card below until it matches the real card's width. We'll remember this for you.
+        </p>
+        <div class="cal-stage">
+          <div class="cal-card" id="calCard">
+            <span class="cal-card-label">Credit card<br />85.60 &times; 53.98 mm</span>
+            <div class="cal-handle" id="calHandle" role="slider" aria-label="Resize card" tabindex="0"></div>
+          </div>
+        </div>
+        <div class="cal-info">
+          <span id="calReadout">&mdash;</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="calCancel">Cancel</button>
+          <button type="button" class="secondary" id="calReset">Reset</button>
+          <button type="button" class="primary" id="calSave">Save calibration</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
