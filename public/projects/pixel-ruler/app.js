@@ -2,6 +2,7 @@
   "use strict";
 
   // ---------- Constants ----------
+  const VERSION = "0.4.0";
   const CARD_WIDTH_MM = 85.6;
   const STORAGE_KEY = "pixelRuler.pxPerMm";
   const SHAPE_TYPES = ["line", "rect", "circle"];
@@ -623,6 +624,18 @@
     snapBtn.setAttribute("aria-pressed", String(state.snapEnabled));
   });
 
+  // Theme toggle (light/dark). Initial data-theme is set by an inline head script.
+  const THEME_KEY = "pixelRuler.theme";
+  const themeToggle = $("themeToggle");
+  themeToggle.addEventListener("click", () => {
+    const current = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch (e) { /* ignore */ }
+  });
+
   // ---------- Canvas interactions ----------
   function wireShapePointer(root, id) {
     root.addEventListener("pointerdown", (e) => {
@@ -1013,6 +1026,9 @@
   window.addEventListener("resize", updateCanvasSize);
   setMode("css");
   setActiveTab("line");
+
+  const versionEl = $("version");
+  if (versionEl) versionEl.textContent = `v${VERSION}`;
 
   // Seed with one line so the canvas isn't empty on first load
   createObject("line");
