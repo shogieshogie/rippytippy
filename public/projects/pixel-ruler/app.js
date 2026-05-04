@@ -2,7 +2,7 @@
   "use strict";
 
   // ---------- Constants ----------
-  const VERSION = "0.5.1";
+  const VERSION = "0.5.2";
   const CARD_WIDTH_MM = 85.6;
   const STORAGE_KEY = "pixelRuler.pxPerMm";
   const SHAPE_TYPES = ["line", "rect", "circle"];
